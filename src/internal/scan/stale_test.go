@@ -91,3 +91,40 @@ func TestStaleMissingStoreSkipped(t *testing.T) {
 		t.Fatalf("expected no results, got %v", res)
 	}
 }
+
+func TestStaleNestedStore(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "persist")
+	system := filepath.Join(home, "system")
+	for _, f := range []string{
+		"home/diffy/nixxy/f",
+		"home/diffy/junk",
+		"system/var/log/l",
+		"system/var/junk",
+	} {
+		p := filepath.Join(home, f)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := &manifest.Manifest{
+		Version: manifest.Version,
+		Stores:  []string{home, system, home},
+		Persisted: []manifest.Entry{
+			{Kind: manifest.KindDir, Live: "/home/diffy/nixxy", Store: home},
+			{Kind: manifest.KindDir, Live: "/var/log", Store: system},
+		},
+	}
+
+	res, err := Stale(manifest.NewMatcher(m), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eq(t, paths(res), []string{
+		filepath.Join(home, "home/diffy/junk"),
+		filepath.Join(system, "var/junk"),
+	})
+}

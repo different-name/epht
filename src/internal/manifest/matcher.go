@@ -12,7 +12,8 @@ type Matcher struct {
 func NewMatcher(m *Manifest) *Matcher {
 	mt := &Matcher{
 		exclude: append([]string(nil), m.Exclude...),
-		stores:  append([]string(nil), m.Stores...),
+		// unioned manifests repeat stores, and the stale scan walks each one
+		stores: unique(m.Stores),
 	}
 	for _, e := range m.Persisted {
 		switch e.Kind {
@@ -27,6 +28,15 @@ func NewMatcher(m *Manifest) *Matcher {
 
 func (mt *Matcher) Stores() []string {
 	return mt.stores
+}
+
+func (mt *Matcher) IsStoreRoot(path string) bool {
+	for _, s := range mt.stores {
+		if s == path {
+			return true
+		}
+	}
+	return false
 }
 
 // a file entry is persisted exactly, a dir entry covers its whole subtree
@@ -104,4 +114,17 @@ func strictlyUnder(prefix, path string) bool {
 
 func underOrEqual(prefix, path string) bool {
 	return prefix == path || strictlyUnder(prefix, path)
+}
+
+func unique(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
 }

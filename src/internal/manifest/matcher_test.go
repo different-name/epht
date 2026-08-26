@@ -118,3 +118,13 @@ func TestUnderOrEqualBoundary(t *testing.T) {
 		t.Error("root must cover everything")
 	}
 }
+
+func TestStoresDeduped(t *testing.T) {
+	mt := NewMatcher(&Manifest{Version: Version, Stores: []string{"/persist", "/persist", "/state"}})
+	if got := mt.Stores(); len(got) != 2 {
+		t.Fatalf("stores = %v, want 2 unique", got)
+	}
+	if !mt.IsStoreRoot("/persist") || mt.IsStoreRoot("/persist/system") {
+		t.Error("IsStoreRoot should match a root exactly")
+	}
+}

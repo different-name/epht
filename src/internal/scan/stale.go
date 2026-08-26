@@ -30,6 +30,10 @@ func Stale(mt *manifest.Matcher, opts Options) ([]Result, error) {
 			}
 
 			if d.IsDir() {
+				// a store nested inside another one gets its own walk
+				if path != store && mt.IsStoreRoot(path) {
+					return fs.SkipDir
+				}
 				if mt.Covered(live) {
 					return fs.SkipDir
 				}
