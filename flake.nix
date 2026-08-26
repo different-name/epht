@@ -14,6 +14,10 @@
 
   outputs =
     inputs:
+    let
+      inherit (inputs) self;
+      mkEphtModule = import ./modules self;
+    in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
 
@@ -33,5 +37,17 @@
 
           formatter = pkgs.nixfmt;
         };
+
+      flake = {
+        nixosModules = {
+          default = self.nixosModules.epht;
+          epht = mkEphtModule "nixos";
+        };
+
+        homeModules = {
+          default = self.homeModules.epht;
+          epht = mkEphtModule "home-manager";
+        };
+      };
     };
 }
