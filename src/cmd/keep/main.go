@@ -14,17 +14,27 @@ usage:
   keep list orphaned [paths]    store data no entry claims
   keep list declared            every entry with its volume and store
   keep check                    verify mounts, links and ownership
+  keep adopt <path> <volume>    copy live data into a volume, before declaring it there
+  keep move  <path> <volume>    copy kept data to another volume, before declaring it there
 
 flags (list unkept, list orphaned):
   -f, --files          every file instead of one line per fully unkept or orphaned dir
       --size           on-disk size per entry plus a total
       --bytes          raw byte counts instead of human-readable
+      --summary        path count and total size per report, orphaned split by volume
       --json           json array of {report, path, kind, volume, size}, sizes in bytes
   -0, --null           nul-separated paths, for xargs -0
 
 flags (list declared):
       --json           json array of manifest entries
   -0, --null           nul-separated live paths
+
+flags (adopt, move):
+  -n, --dry-run        print what would be copied
+
+  move empties the old copy when the path is inside another entry of its volume,
+  since the switch turns it into a mount point. Run both with the program closed
+  and switch straight after.
 
 flags (all):
   -m, --manifest PATH  use this manifest (repeatable), else $KEEP_MANIFEST
@@ -47,6 +57,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdList(args[1:], stdout, stderr)
 	case "check":
 		return cmdCheck(args[1:], stdout, stderr)
+	case "adopt", "move":
+		return cmdTransfer(args[0], args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0

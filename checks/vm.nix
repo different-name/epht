@@ -139,6 +139,48 @@ pkgs.testers.runNixOSTest {
         assert "/persist/system/var/lib/old/data\n" in out, out
         machine.succeed("rm -r /persist/system/var/lib/old /scratch/home/alice/.local/share/Steam/steamapps/stray")
 
+    with subtest("summary counts orphaned data per volume"):
+        import json
+
+        def orphaned_in(volume):
+            rows = json.loads(machine.succeed("keep list orphaned --summary --json || true"))
+            return next((r["count"] for r in rows if r.get("volume") == volume), 0)
+
+        before = orphaned_in("persist")
+        machine.succeed("mkdir -p /persist/system/var/lib/stale && echo x > /persist/system/var/lib/stale/data")
+        assert orphaned_in("persist") == before + 1
+        assert "orphaned persist" in machine.succeed("keep list orphaned --summary || true")
+        machine.succeed("rm -r /persist/system/var/lib/stale")
+
+    with subtest("adopt copies live data into a volume with its ownership"):
+        machine.succeed("mkdir /var/lib/fresh && echo x > /var/lib/fresh/data && chown -R alice /var/lib/fresh")
+        out = machine.succeed("keep adopt /var/lib/fresh persist")
+        assert "next: declare /var/lib/fresh in the persist volume" in out, out
+        machine.succeed("stat -c %U /persist/system/var/lib/fresh/data | grep -qx alice")
+        machine.succeed("grep -qx x /var/lib/fresh/data")
+        machine.fail("keep adopt /var/lib/fresh persist")
+        machine.fail("keep adopt /var/lib/thing scratch")
+
+    with subtest("adopt as the user stores a home path at the volume root"):
+        machine.succeed("su alice -c 'mkdir -p ~/.config/newapp && echo y > ~/.config/newapp/s'")
+        machine.succeed("su alice -c 'keep adopt ~/.config/newapp scratch'")
+        machine.succeed("stat -c %U:%a /scratch/home/alice/.config | grep -qx alice:755")
+        machine.succeed("grep -qx y /scratch/home/alice/.config/newapp/s")
+
+    with subtest("move takes a nested path out of its outer volume and leaves an empty mount point"):
+        machine.succeed("su alice -c 'mkdir -p ~/.local/share/Steam/steamapps/workshop/item && echo w > ~/.local/share/Steam/steamapps/workshop/item/f'")
+        machine.succeed("keep move -n /home/alice/.local/share/Steam/steamapps/workshop scratch")
+        machine.succeed("test -f /persist/home/alice/.local/share/Steam/steamapps/workshop/item/f")
+        out = machine.succeed("keep move /home/alice/.local/share/Steam/steamapps/workshop scratch")
+        assert "emptied /persist/home/alice/.local/share/Steam/steamapps/workshop" in out, out
+        machine.succeed("stat -c %U /scratch/home/alice/.local/share/Steam/steamapps/workshop/item/f | grep -qx alice")
+        machine.succeed("test -d /persist/home/alice/.local/share/Steam/steamapps/workshop")
+        machine.succeed("test -z \"$(ls -A /persist/home/alice/.local/share/Steam/steamapps/workshop)\"")
+
+    with subtest("move refuses a target under a propagated mount"):
+        out = machine.fail("keep move /home/alice/.local/share/Steam/steamapps/common persist 2>&1")
+        assert "mount point" in out, out
+
     uid = machine.succeed("id -u alice").strip()
 
     machine.shutdown()

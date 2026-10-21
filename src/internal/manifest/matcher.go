@@ -166,3 +166,25 @@ func unique(in []string) []string {
 	}
 	return out
 }
+
+// the most specific entry whose live path covers path
+func (mt *Matcher) Covering(path string) (Entry, bool) {
+	var best Entry
+	found := false
+	consider := func(e Entry) {
+		if !found || len(e.Live) > len(best.Live) {
+			best, found = e, true
+		}
+	}
+	for _, f := range mt.files {
+		if path == f.Live {
+			consider(f)
+		}
+	}
+	for _, d := range mt.dirs {
+		if underOrEqual(d.Live, path) {
+			consider(d)
+		}
+	}
+	return best, found
+}

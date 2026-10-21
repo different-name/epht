@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/different-name/keep-nix/internal/scan"
 )
 
 func TestUsageAndUnknown(t *testing.T) {
@@ -49,5 +51,32 @@ func TestListDeclared(t *testing.T) {
 		if out.String() != want {
 			t.Fatalf("%v: got\n%s\nwant\n%s", args, out.String(), want)
 		}
+	}
+}
+
+func TestSummary(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name string, size int) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, make([]byte, size), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	reports := []report{
+		{name: "unkept", results: []scan.Result{{Path: write("a", 10), Kind: "file"}}},
+		{name: "orphaned", results: []scan.Result{
+			{Path: write("b", 20), Kind: "file", Volume: "safe"},
+			{Path: write("c", 30), Kind: "file", Volume: "loose"},
+			{Path: write("d", 40), Kind: "file", Volume: "safe"},
+		}},
+	}
+	var out bytes.Buffer
+	if err := emit(&out, reports, listFlags{summary: true, bytes: true}, true); err != nil {
+		t.Fatal(err)
+	}
+	want := "unkept          1 paths  10\norphaned loose  1 paths  30\norphaned safe   2 paths  60\n"
+	if out.String() != want {
+		t.Fatalf("got\n%s\nwant\n%s", out.String(), want)
 	}
 }

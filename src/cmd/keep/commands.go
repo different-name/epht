@@ -23,11 +23,12 @@ func (s *stringList) Set(v string) error {
 }
 
 type listFlags struct {
-	files bool
-	size  bool
-	bytes bool
-	json  bool
-	null  bool
+	files   bool
+	size    bool
+	summary bool
+	bytes   bool
+	json    bool
+	null    bool
 
 	manifests stringList
 }
@@ -36,6 +37,7 @@ func (f *listFlags) bind(fs *flag.FlagSet) {
 	fs.BoolVar(&f.files, "files", false, "every file instead of one line per fully unkept or orphaned dir")
 	fs.BoolVar(&f.files, "f", false, "shorthand for --files")
 	fs.BoolVar(&f.size, "size", false, "show on-disk size per entry plus a total")
+	fs.BoolVar(&f.summary, "summary", false, "path count and total size per report, orphaned split by volume")
 	fs.BoolVar(&f.bytes, "bytes", false, "raw byte counts instead of human-readable")
 	fs.BoolVar(&f.json, "json", false, "json array of {report, path, kind, volume, size}")
 	fs.BoolVar(&f.null, "null", false, "nul-separated output, for xargs -0")

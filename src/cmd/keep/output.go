@@ -45,6 +45,9 @@ func sizeStr(n int64, raw bool) string {
 
 func emit(w io.Writer, reports []report, f listFlags, headed bool) error {
 	switch {
+	case f.summary:
+		return emitSummary(w, reports, f)
+
 	case f.json:
 		items := []jsonItem{}
 		for _, r := range reports {
@@ -145,4 +148,69 @@ func emitDeclared(w io.Writer, m *manifest.Manifest, f listFlags) int {
 		fmt.Fprintf(w, "  %-4s %s\n", e.Kind, e.Live)
 	}
 	return 0
+}
+
+type summaryRow struct {
+	Report string `json:"report"`
+	Volume string `json:"volume,omitempty"`
+	Count  int    `json:"count"`
+	Size   int64  `json:"size"`
+}
+
+// orphaned data is deleted per volume, so it is split by volume
+func summarize(reports []report) []summaryRow {
+	var rows []summaryRow
+	for _, r := range reports {
+		byVolume := map[string]*summaryRow{}
+		var order []string
+		for _, res := range r.results {
+			volume := ""
+			if r.name == "orphaned" {
+				volume = res.Volume
+			}
+			row, ok := byVolume[volume]
+			if !ok {
+				row = &summaryRow{Report: r.name, Volume: volume}
+				byVolume[volume] = row
+				order = append(order, volume)
+			}
+			row.Count++
+			row.Size += scan.Size(res)
+		}
+		if len(order) == 0 {
+			rows = append(rows, summaryRow{Report: r.name})
+			continue
+		}
+		sort.Strings(order)
+		for _, v := range order {
+			rows = append(rows, *byVolume[v])
+		}
+	}
+	return rows
+}
+
+func emitSummary(w io.Writer, reports []report, f listFlags) error {
+	rows := summarize(reports)
+	if f.json {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(rows)
+	}
+	labels := make([]string, len(rows))
+	counts := make([]string, len(rows))
+	sizes := make([]string, len(rows))
+	var lw, cw, sw int
+	for i, r := range rows {
+		labels[i] = r.Report
+		if r.Volume != "" {
+			labels[i] += " " + r.Volume
+		}
+		counts[i] = fmt.Sprintf("%d", r.Count)
+		sizes[i] = sizeStr(r.Size, f.bytes)
+		lw, cw, sw = max(lw, len(labels[i])), max(cw, len(counts[i])), max(sw, len(sizes[i]))
+	}
+	for i := range rows {
+		fmt.Fprintf(w, "%-*s  %*s paths  %*s\n", lw, labels[i], cw, counts[i], sw, sizes[i])
+	}
+	return nil
 }

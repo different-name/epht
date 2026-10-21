@@ -1,6 +1,7 @@
 {
   lib,
   buildGoModule,
+  coreutils,
 }:
 buildGoModule {
   pname = "keep";
@@ -22,6 +23,7 @@ buildGoModule {
   ldflags = [
     "-s"
     "-w"
+    "-X main.cpPath=${lib.getExe' coreutils "cp"}"
   ];
 
   meta = {
