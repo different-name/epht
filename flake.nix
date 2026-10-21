@@ -56,10 +56,6 @@
       flake = {
         nixosModules = modules.nixos;
         homeModules = modules.home;
-
-        # the entries option set, for modules that extend a volume
-        lib.entryOptions =
-          { lib, format }: (import ./modules/options.nix { inherit lib format; }).entryOptions;
       };
     };
 }
