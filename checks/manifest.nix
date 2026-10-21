@@ -62,7 +62,7 @@ let
   };
 
   nixosFixture = {
-    programs.keep.extraExcludes = [ "/swap" ];
+    programs.keep.exclude = [ "/swap" ];
     keep.persist = {
       path = "/persist";
       dirs."/var/log" = { };
@@ -104,7 +104,7 @@ let
         ];
         hideMounts = true;
       };
-      programs.keep.extraExcludes = [ ".cache/junk" ];
+      programs.keep.exclude = [ ".cache/junk" ];
     };
   };
 
@@ -190,7 +190,7 @@ let
       path = "/scratch";
       dataDirs = [ "Steam/steamapps/common" ];
     };
-    programs.keep.extraExcludes = [ ".cache/thumbs" ];
+    programs.keep.exclude = [ ".cache/thumbs" ];
   };
 
   hmExpected = {

@@ -55,10 +55,10 @@ let
   exclude = lib.unique (
     lib.optionals (!isHome) floor
     ++ lib.mapAttrsToList (_: v: v.path) source.volumes
-    ++ map (joinLive homeDir) cfg.extraExcludes
+    ++ map (joinLive homeDir) cfg.exclude
     ++ lib.concatLists (
       lib.mapAttrsToList (
-        _: ucfg: map (joinLive ucfg.home.homeDirectory) (ucfg.programs.keep.extraExcludes or [ ])
+        _: ucfg: map (joinLive ucfg.home.homeDirectory) (ucfg.programs.keep.exclude or [ ])
       ) hmUsers
     )
   );
@@ -103,7 +103,7 @@ in
       description = "The keep package to use";
     };
 
-    extraExcludes = lib.mkOption {
+    exclude = lib.mkOption {
       type = types.listOf types.str;
       default = [ ];
       example = if isHome then [ ".cache/thumbnails" ] else [ "/swap" ];
