@@ -78,21 +78,18 @@ let
   resolveXdg =
     kind: v:
     lib.optionalAttrs isHome (
-      lib.concatMapAttrs (
-        home: e: lib.mapAttrs' (key: x: lib.nameValuePair "${xdgRelative home}/${key}" x) e.${kind}
-      ) v.xdg
+      lib.mergeAttrsList (
+        map (
+          home: lib.mapAttrs' (key: x: lib.nameValuePair "${xdgRelative home}/${key}" x) v."${home}${kind}"
+        ) xdgHomes
+      )
     );
 
-  resolvedDirs = v: v.dirs // resolveXdg "dirs" v;
-  resolvedFiles = v: v.files // resolveXdg "files" v;
+  resolvedDirs = v: v.dirs // resolveXdg "Dirs" v;
+  resolvedFiles = v: v.files // resolveXdg "Files" v;
 
   allKeys = lib.concatMap (
-    v:
-    lib.attrNames v.dirs
-    ++ lib.attrNames v.files
-    ++ lib.optionals isHome (
-      lib.concatMap (e: lib.attrNames e.dirs ++ lib.attrNames e.files) (lib.attrValues v.xdg)
-    )
+    v: lib.concatMap (name: lib.attrNames v.${name}) (lib.attrNames entryOptions)
   ) (lib.attrValues cfg);
 in
 {

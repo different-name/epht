@@ -3,7 +3,6 @@ let
   inherit (lib) types;
 
   isHome = format == "home-manager";
-  relativeTo = if isHome then "the home directory" else "the root";
 
   permission =
     description:
@@ -23,19 +22,35 @@ let
 
   file = types.submodule { };
 
-  entries = relative: {
-    dirs = lib.mkOption {
-      type = types.attrsOf dir;
-      default = { };
-      description = "Directories to persist, keyed by path relative to ${relative}";
-    };
+  keyed =
+    entry: types.coercedTo (types.listOf types.str) (l: lib.genAttrs l (_: { })) (types.attrsOf entry);
 
-    files = lib.mkOption {
-      type = types.attrsOf file;
-      default = { };
-      description = "Files to persist, keyed by path relative to ${relative}";
+  entries =
+    {
+      dirs,
+      files,
+      relative,
+      example ? null,
+    }:
+    {
+      ${dirs} = lib.mkOption (
+        {
+          type = keyed dir;
+          default = { };
+          description = "Directories to persist, relative to ${relative}. Either a list of paths, or an attribute set keyed by path to set ownership and mode";
+        }
+        // lib.optionalAttrs (example != null) { example = example.dirs; }
+      );
+
+      ${files} = lib.mkOption (
+        {
+          type = keyed file;
+          default = { };
+          description = "Files to persist, relative to ${relative}. Either a list of paths, or an attribute set keyed by path";
+        }
+        // lib.optionalAttrs (example != null) { example = example.files; }
+      );
     };
-  };
 
   xdgHomes = [
     # keep-sorted start
@@ -50,21 +65,33 @@ in
   inherit xdgHomes;
 
   entryOptions =
-    entries relativeTo
-    // lib.optionalAttrs isHome {
-      xdg = lib.mkOption {
-        type = types.submodule {
-          options = lib.genAttrs xdgHomes (
-            home:
-            lib.mkOption {
-              type = types.submodule { options = entries "the xdg ${home} home"; };
-              default = { };
-              description = "Entries under the xdg ${home} home";
-            }
-          );
+    if isHome then
+      entries {
+        dirs = "dirs";
+        files = "files";
+        relative = "the home directory";
+        example = {
+          dirs = [ "Documents" ];
+          files = [ ".bash_history" ];
         };
-        default = { };
-        description = "Entries under the xdg base directories, resolved from the xdg options";
+      }
+      // lib.foldl' (
+        acc: home:
+        acc
+        // entries {
+          dirs = "${home}Dirs";
+          files = "${home}Files";
+          relative = "the xdg ${home} home";
+        }
+      ) { } xdgHomes
+    else
+      entries {
+        dirs = "dirs";
+        files = "files";
+        relative = "the root";
+        example = {
+          dirs = [ "/var/lib/nixos" ];
+          files = [ "/etc/machine-id" ];
+        };
       };
-    };
 }

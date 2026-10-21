@@ -47,8 +47,10 @@ pkgs.testers.runNixOSTest {
         user = "alice";
         mode = "0700";
       };
-      files."/var/lib/seed" = { };
-      files."/var/lib/empty" = { };
+      files = [
+        "/var/lib/seed"
+        "/var/lib/empty"
+      ];
     };
 
     keep.scratch.path = "/scratch";
@@ -57,12 +59,12 @@ pkgs.testers.runNixOSTest {
       imports = [ self.homeModules.keep ];
       home.stateVersion = "26.05";
       keep.persist = {
-        dirs."Documents" = { };
-        files.".token" = { };
-        xdg.config.dirs."app" = { };
-        xdg.data.dirs."Steam" = { };
+        dirs = [ "Documents" ];
+        files = [ ".token" ];
+        configDirs = [ "app" ];
+        dataDirs = [ "Steam" ];
       };
-      keep.scratch.xdg.data.dirs."Steam/steamapps/common" = { };
+      keep.scratch.dataDirs = [ "Steam/steamapps/common" ];
     };
 
     system.stateVersion = "26.05";

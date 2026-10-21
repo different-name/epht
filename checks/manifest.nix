@@ -182,13 +182,13 @@ let
     keep.persist = {
       path = "/persist";
       dirs.".ssh".mode = "0700";
-      files.".bashrc" = { };
-      xdg.data.dirs."Steam" = { };
-      xdg.config.files."app/token" = { };
+      files = [ ".bashrc" ];
+      dataDirs = [ "Steam" ];
+      configFiles."app/token" = { };
     };
     keep.scratch = {
       path = "/scratch";
-      xdg.data.dirs."Steam/steamapps/common" = { };
+      dataDirs = [ "Steam/steamapps/common" ];
     };
     programs.keep.extraExcludes = [ ".cache/thumbs" ];
   };
